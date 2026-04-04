@@ -1,0 +1,209 @@
+#!/bin/bash
+
+PROJECT_NAME=$(basename "$PWD")
+TARGET_FILE="${PROJECT_NAME}.c"
+
+if [ ! -f "$TARGET_FILE" ]; then
+    echo "Error: No se encuentra el archivo principal '$TARGET_FILE'."
+    exit 1
+fi
+
+echo "========================================"
+echo "   Configurador Automático EK-TM4C129"
+echo "========================================"
+echo "Seleccione el periférico a configurar:"
+echo "1) GPIO"
+echo "2) ADC"
+echo "3) PWM"
+echo "4) UART"
+echo "5) Timer"
+read -p "Opción (1-5): " PERIPH_OPT
+
+CONFIG_BLOCK=""
+MARKER=""
+
+case $PERIPH_OPT in
+    1) # GPIO
+        MARKER="\[MARKER_GPIO_CONFIG\]"
+        read -p "Puerto (Ej. N, J, A): " PORT
+        read -p "Pin (0-7): " PIN
+        read -p "Dirección (1 para Salida, 0 para Entrada): " DIR
+        
+        PORT=$(echo "$PORT" | tr '[:lower:]' '[:upper:]')
+        
+        CONFIG_BLOCK="    // Configuración GPIO Port ${PORT}, Pin ${PIN}
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIO${PORT});
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIO${PORT})) {}"
+        
+        if [ "$DIR" == "1" ]; then
+            CONFIG_BLOCK="$CONFIG_BLOCK
+    GPIOPinTypeGPIOOutput(GPIO_PORT${PORT}_BASE, GPIO_PIN_${PIN});"
+        else
+            CONFIG_BLOCK="$CONFIG_BLOCK
+    GPIOPinTypeGPIOInput(GPIO_PORT${PORT}_BASE, GPIO_PIN_${PIN});
+    GPIOPadConfigSet(GPIO_PORT${PORT}_BASE, GPIO_PIN_${PIN}, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);"
+        fi
+        ;;
+
+    2) # ADC
+        MARKER="\[MARKER_ADC_CONFIG\]"
+        read -p "Canal AIN (0-19): " AIN_CH
+        read -p "Secuenciador a utilizar (0-3): " ADC_SEQ
+        
+        case $AIN_CH in
+            0) PORT="E"; PIN="3" ;;
+            1) PORT="E"; PIN="2" ;;
+            2) PORT="E"; PIN="1" ;;
+            3) PORT="E"; PIN="0" ;;
+            4) PORT="D"; PIN="7" ;;
+            5) PORT="D"; PIN="6" ;;
+            6) PORT="D"; PIN="5" ;;
+            7) PORT="D"; PIN="4" ;;
+            8) PORT="E"; PIN="5" ;;
+            9) PORT="E"; PIN="4" ;;
+            10) PORT="B"; PIN="4" ;;
+            11) PORT="B"; PIN="5" ;;
+            12) PORT="D"; PIN="3" ;;
+            13) PORT="D"; PIN="2" ;;
+            14) PORT="D"; PIN="1" ;;
+            15) PORT="D"; PIN="0" ;;
+            16) PORT="K"; PIN="0" ;;
+            17) PORT="K"; PIN="1" ;;
+            18) PORT="K"; PIN="2" ;;
+            19) PORT="K"; PIN="3" ;;
+            *) echo "Canal AIN inválido."; exit 1 ;;
+        esac
+
+        CONFIG_BLOCK="    // Configuración ADC para AIN${AIN_CH} (Port ${PORT}, Pin ${PIN})
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIO${PORT});
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIO${PORT})) {}
+    GPIOPinTypeADC(GPIO_PORT${PORT}_BASE, GPIO_PIN_${PIN});
+    ADCSequenceConfigure(ADC0_BASE, ${ADC_SEQ}, ADC_TRIGGER_PROCESSOR, 0);
+    ADCSequenceStepConfigure(ADC0_BASE, ${ADC_SEQ}, 0, ADC_CTL_IE | ADC_CTL_END | ADC_CTL_CH${AIN_CH});
+    ADCSequenceEnable(ADC0_BASE, ${ADC_SEQ});
+    ADCIntClear(ADC0_BASE, ${ADC_SEQ});"
+        ;;
+
+    3) # PWM
+        MARKER="\[MARKER_PWM_CONFIG\]"
+        read -p "Módulo PWM (0 o 1): " PWM_MOD
+        read -p "Salida PWM (0-7): " PWM_OUT
+        read -p "Frecuencia del PWM en Hz (ej. 10000): " PWM_FREQ
+        read -p "Duty cycle inicial (1-99): " PWM_DUTY
+        
+        if [ "$PWM_MOD" == "0" ]; then
+            case $PWM_OUT in
+                0) PORT="F"; PIN="0"; GEN="0" ;;
+                1) PORT="F"; PIN="1"; GEN="0" ;;
+                2) PORT="F"; PIN="2"; GEN="1" ;;
+                3) PORT="F"; PIN="3"; GEN="1" ;;
+                4) PORT="G"; PIN="0"; GEN="2" ;;
+                5) PORT="G"; PIN="1"; GEN="2" ;;
+                6) PORT="K"; PIN="4"; GEN="3" ;;
+                7) PORT="K"; PIN="5"; GEN="3" ;;
+                *) echo "Salida PWM inválida."; exit 1 ;;
+            esac
+        elif [ "$PWM_MOD" == "1" ]; then
+            case $PWM_OUT in
+                0) PORT="D"; PIN="0"; GEN="0" ;;
+                1) PORT="D"; PIN="1"; GEN="0" ;;
+                2) PORT="E"; PIN="4"; GEN="1" ;;
+                3) PORT="E"; PIN="5"; GEN="1" ;;
+                4) PORT="F"; PIN="0"; GEN="2" ;;
+                5) PORT="F"; PIN="1"; GEN="2" ;;
+                6) PORT="F"; PIN="2"; GEN="3" ;;
+                7) PORT="F"; PIN="3"; GEN="3" ;;
+                *) echo "Salida PWM inválida."; exit 1 ;;
+            esac
+        else
+            echo "Módulo PWM inválido."; exit 1
+        fi
+        
+        PIN_CONF="GPIO_P${PORT}${PIN}_M${PWM_MOD}PWM${PWM_OUT}"
+
+        CONFIG_BLOCK="    // Configuración PWM M${PWM_MOD}, Salida ${PWM_OUT} (Port ${PORT}, Pin ${PIN})
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_PWM${PWM_MOD});
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_PWM${PWM_MOD})) {}
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIO${PORT});
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIO${PORT})) {}
+    
+    GPIOPinConfigure(${PIN_CONF});
+    GPIOPinTypePWM(GPIO_PORT${PORT}_BASE, GPIO_PIN_${PIN});
+    PWMGenConfigure(PWM${PWM_MOD}_BASE, PWM_GEN_${GEN}, PWM_GEN_MODE_DOWN | PWM_GEN_MODE_NO_SYNC);
+    
+    uint32_t ui32PeriodM${PWM_MOD}_${PWM_OUT} = g_ui32SysClock / ${PWM_FREQ};
+    PWMGenPeriodSet(PWM${PWM_MOD}_BASE, PWM_GEN_${GEN}, ui32PeriodM${PWM_MOD}_${PWM_OUT});
+    PWMPulseWidthSet(PWM${PWM_MOD}_BASE, PWM_OUT_${PWM_OUT}, (ui32PeriodM${PWM_MOD}_${PWM_OUT} * ${PWM_DUTY}) / 100);
+    
+    PWMGenEnable(PWM${PWM_MOD}_BASE, PWM_GEN_${GEN});
+    PWMOutputState(PWM${PWM_MOD}_BASE, PWM_OUT_${PWM_OUT}_BIT, true);"
+        ;;
+
+    4) # UART
+        MARKER="\[MARKER_UART_CONFIG\]"
+        read -p "Módulo UART (0-7): " UART_MOD
+        read -p "Baudrate (ej. 115200): " BAUD
+        
+        case $UART_MOD in
+            0) PORT="A"; RX="0"; TX="1" ;;
+            1) PORT="B"; RX="0"; TX="1" ;;
+            2) PORT="D"; RX="4"; TX="5" ;;
+            3) PORT="J"; RX="0"; TX="1" ;;
+            4) PORT="K"; RX="0"; TX="1" ;;
+            5) PORT="C"; RX="6"; TX="7" ;;
+            6) PORT="P"; RX="0"; TX="1" ;;
+            7) PORT="C"; RX="4"; TX="5" ;;
+            *) echo "UART inválido."; exit 1 ;;
+        esac
+
+        CONFIG_BLOCK="    // Configuración UART${UART_MOD} (Port ${PORT}, RX Pin ${RX}, TX Pin ${TX})
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART${UART_MOD});
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_UART${UART_MOD})) {}
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIO${PORT});
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIO${PORT})) {}
+    
+    GPIOPinConfigure(GPIO_P${PORT}${RX}_U${UART_MOD}RX);
+    GPIOPinConfigure(GPIO_P${PORT}${TX}_U${UART_MOD}TX);
+    GPIOPinTypeUART(GPIO_PORT${PORT}_BASE, GPIO_PIN_${RX} | GPIO_PIN_${TX});
+    
+    UARTConfigSetExpClk(UART${UART_MOD}_BASE, g_ui32SysClock, ${BAUD},
+                        (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
+                         UART_CONFIG_PAR_NONE));"
+        ;;
+
+    5) # Timer
+        MARKER="\[MARKER_TIM_CONFIG\]"
+        read -p "Módulo Timer (0-7): " TIM_MOD
+        read -p "Frecuencia de interrupción en Hz (ej. 1 para 1 seg): " TIM_FREQ
+        
+        CONFIG_BLOCK="    // Configuración Timer${TIM_MOD} (Periódico, 32-bit)
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER${TIM_MOD});
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_TIMER${TIM_MOD})) {}
+    
+    TimerConfigure(TIMER${TIM_MOD}_BASE, TIMER_CFG_PERIODIC);
+    
+    uint32_t ui32PeriodTim${TIM_MOD} = g_ui32SysClock / ${TIM_FREQ};
+    TimerLoadSet(TIMER${TIM_MOD}_BASE, TIMER_A, ui32PeriodTim${TIM_MOD} - 1);
+    
+    IntEnable(INT_TIMER${TIM_MOD}A);
+    TimerIntEnable(TIMER${TIM_MOD}_BASE, TIMER_TIMA_TIMEOUT);
+    TimerEnable(TIMER${TIM_MOD}_BASE, TIMER_A);"
+        ;;
+
+    *)
+        echo "Opción no reconocida."
+        exit 1
+        ;;
+esac
+
+if [ -n "$CONFIG_BLOCK" ]; then
+    awk -v insert="$CONFIG_BLOCK" -v marker="$MARKER" '
+        $0 ~ marker {
+            print insert
+            print ""
+        }
+        { print }
+    ' "$TARGET_FILE" > tmp_file && mv tmp_file "$TARGET_FILE"
+    
+    echo "¡Configuración inyectada exitosamente en $TARGET_FILE!"
+fi

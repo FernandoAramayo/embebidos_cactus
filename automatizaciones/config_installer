@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Directorio destino estándar en Ubuntu para scripts de usuario
+INSTALL_DIR="$HOME/.local/bin"
+SCRIPT_NAME="tiva_config"
+
+echo "Iniciando instalación de $SCRIPT_NAME..."
+
+# Crear el directorio si no existe
+if [ ! -d "$INSTALL_DIR" ]; then
+    echo "Creando directorio $INSTALL_DIR..."
+    mkdir -p "$INSTALL_DIR"
+fi
+
+# Copiar el script de configuración al directorio de instalación
+if [ -f "./$SCRIPT_NAME" ]; then
+    cp "./$SCRIPT_NAME" "$INSTALL_DIR/"
+    chmod +x "$INSTALL_DIR/$SCRIPT_NAME"
+    echo "¡Éxito! $SCRIPT_NAME se ha instalado en $INSTALL_DIR."
+else
+    echo "Error: No se encuentra el archivo $SCRIPT_NAME en el directorio actual."
+    exit 1
+fi
+
+# Verificar si el directorio está en el PATH actual
+if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+    echo "==========================================================="
+    echo "NOTA: $INSTALL_DIR no está en tu \$PATH."
+    echo "Para solucionarlo, añade la siguiente línea a tu ~/.bashrc:"
+    echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
+    echo "Luego ejecuta: source ~/.bashrc"
+    echo "==========================================================="
+fi
