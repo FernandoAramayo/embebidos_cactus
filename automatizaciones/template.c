@@ -11,6 +11,7 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/timer.h"
 #include "driverlib/uart.h"
+#include "utils/uartstdio.c"
 #include "utils/uartstdio.h"
 #include "driverlib/adc.h"
 #include "driverlib/pwm.h"
