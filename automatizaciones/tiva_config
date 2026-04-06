@@ -1,10 +1,12 @@
 #!/bin/bash
 
+# Extraer el nombre de la carpeta actual y definir el archivo C
 PROJECT_NAME=$(basename "$PWD")
 TARGET_FILE="${PROJECT_NAME}.c"
 
 if [ ! -f "$TARGET_FILE" ]; then
     echo "Error: No se encuentra el archivo principal '$TARGET_FILE'."
+    echo "Asegúrate de ejecutar este comando en la raíz del proyecto."
     exit 1
 fi
 
@@ -15,7 +17,7 @@ echo "Seleccione el periférico a configurar:"
 echo "1) GPIO"
 echo "2) ADC"
 echo "3) PWM"
-echo "4) UART"
+echo "4) UART (Stdio)"
 echo "5) Timer"
 read -p "Opción (1-5): " PERIPH_OPT
 
@@ -47,6 +49,7 @@ case $PERIPH_OPT in
 
     2) # ADC
         MARKER="\[MARKER_ADC_CONFIG\]"
+        read -p "Módulo ADC (0 o 1): " ADC_MOD
         read -p "Canal AIN (0-19): " AIN_CH
         read -p "Secuenciador a utilizar (0-3): " ADC_SEQ
         
@@ -74,14 +77,18 @@ case $PERIPH_OPT in
             *) echo "Canal AIN inválido."; exit 1 ;;
         esac
 
-        CONFIG_BLOCK="    // Configuración ADC para AIN${AIN_CH} (Port ${PORT}, Pin ${PIN})
+        CONFIG_BLOCK="    // Configuración ADC${ADC_MOD} para AIN${AIN_CH} (Port ${PORT}, Pin ${PIN})
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC${ADC_MOD});
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_ADC${ADC_MOD})) {}
+    
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIO${PORT});
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIO${PORT})) {}
+    
     GPIOPinTypeADC(GPIO_PORT${PORT}_BASE, GPIO_PIN_${PIN});
-    ADCSequenceConfigure(ADC0_BASE, ${ADC_SEQ}, ADC_TRIGGER_PROCESSOR, 0);
-    ADCSequenceStepConfigure(ADC0_BASE, ${ADC_SEQ}, 0, ADC_CTL_IE | ADC_CTL_END | ADC_CTL_CH${AIN_CH});
-    ADCSequenceEnable(ADC0_BASE, ${ADC_SEQ});
-    ADCIntClear(ADC0_BASE, ${ADC_SEQ});"
+    ADCSequenceConfigure(ADC${ADC_MOD}_BASE, ${ADC_SEQ}, ADC_TRIGGER_PROCESSOR, 0);
+    ADCSequenceStepConfigure(ADC${ADC_MOD}_BASE, ${ADC_SEQ}, 0, ADC_CTL_IE | ADC_CTL_END | ADC_CTL_CH${AIN_CH});
+    ADCSequenceEnable(ADC${ADC_MOD}_BASE, ${ADC_SEQ});
+    ADCIntClear(ADC${ADC_MOD}_BASE, ${ADC_SEQ});"
         ;;
 
     3) # PWM
@@ -156,9 +163,10 @@ case $PERIPH_OPT in
             *) echo "UART inválido."; exit 1 ;;
         esac
 
-        CONFIG_BLOCK="    // Configuración UART${UART_MOD} (Port ${PORT}, RX Pin ${RX}, TX Pin ${TX})
+        CONFIG_BLOCK="    // Configuración UART${UART_MOD} para Stdio (Port ${PORT}, RX Pin ${RX}, TX Pin ${TX})
     SysCtlPeripheralEnable(SYSCTL_PERIPH_UART${UART_MOD});
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_UART${UART_MOD})) {}
+    
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIO${PORT});
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIO${PORT})) {}
     
@@ -166,9 +174,8 @@ case $PERIPH_OPT in
     GPIOPinConfigure(GPIO_P${PORT}${TX}_U${UART_MOD}TX);
     GPIOPinTypeUART(GPIO_PORT${PORT}_BASE, GPIO_PIN_${RX} | GPIO_PIN_${TX});
     
-    UARTConfigSetExpClk(UART${UART_MOD}_BASE, g_ui32SysClock, ${BAUD},
-                        (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
-                         UART_CONFIG_PAR_NONE));"
+    // Inicialización de UARTStdio
+    UARTStdioConfig(${UART_MOD}, ${BAUD}, g_ui32SysClock);"
         ;;
 
     5) # Timer
@@ -196,6 +203,7 @@ case $PERIPH_OPT in
         ;;
 esac
 
+# Inyectar el código en el archivo C utilizando awk
 if [ -n "$CONFIG_BLOCK" ]; then
     awk -v insert="$CONFIG_BLOCK" -v marker="$MARKER" '
         $0 ~ marker {
