@@ -40,6 +40,9 @@ void setup_pwm();
 // Handler functions declarations
 void timer0A_handler(void);
 
+// Function declarations
+void delay(uint32_t ms);
+
 // Variables
 uint32_t g_ui32SysClock;
 //uint32_t potValue[1];
@@ -181,4 +184,9 @@ void setup_pwm() {
     // PWMOutputState(PWM0_BASE, (PWM_OUT_1_BIT), true);
 
     // [MARKER_PWM_CONFIG]
+}
+
+void delay(uint32_t ms)
+{
+    SysCtlDelay((g_ui32SysClock / 1000) * ms / 3);
 }
