@@ -5,7 +5,7 @@ def menu():
     print("1. Original")
     print("2. Cut horizontally")
     print("3. Cut Vertically")
-    print("4. Divide in N cuadrants")
+    print("4. Divide in an N x N grid")
     print("esc: exit")
     print("select option (press key)")
 
@@ -25,37 +25,58 @@ def cut_vertically(img):
     return (right, left)
 
 def cut_quadrants(img):
-    print("pres key of number of cuadrants: ")
+    print("grid size (ex. 2 = 2x2) (press key):")
     n = cv2.waitKey(0) & 0xFF
-    n = n-48
-    width = 400/n
-    height = 600/n
+    n = n - 48
+    
+    if n <= 0:
+        print("Invalid number!")
+        return
 
-    current_width = 0
-    current_height = 0
-    for i in range(n):
-        height_limit = int(current_height+height)
-        width_limit = int(current_width+width)
-        img_modified = img[current_height:height_limit, current_width:width_limit]
-        current_height=height_limit
-        current_width=width_limit
-        cv2.imshow(f"image{i}", img_modified)
+    img_height, img_width = img.shape[:2]
+    
+    width_step = img_width / n
+    height_step = img_height / n
+
+    window_count = 0
+    
+    for row in range(n):
+        for col in range(n):
+            y_start = int(row * height_step)
+            y_end = int((row + 1) * height_step)
+            
+            x_start = int(col * width_step)
+            x_end = int((col + 1) * width_step)
+            
+            img_modified = img[y_start:y_end, x_start:x_end]
+            
+            cv2.imshow(f"image_{window_count}", img_modified)
+            window_count += 1
 
 if __name__ == "__main__":
     img = cv2.imread("watermelon.jpeg")
-    img = resize_image(img, 400,600)
-    cv2.imshow("image", img)
+    
+    if img is None:
+        print("Error: Image not found.")
+        exit()
+        
+    img = resize_image(img, 400, 600)
+    
     while True:
-        menu()
+        menu()        
+        cv2.imshow("image", img) 
+        
         img_modified1 = None
         img_modified2 = None
         key = cv2.waitKey(0) & 0xFF
+        
         cv2.destroyAllWindows()
-        cv2.imshow("image", img)
+        
+        cv2.imshow("image", img) 
         
         match key:
             case 49:
-                img_modified1 = resize_image(img, 400,600)
+                img_modified1 = resize_image(img, 400, 600)
             case 50:
                 img_modified1, img_modified2 = cut_horizontally(img)
             case 51:
@@ -64,8 +85,10 @@ if __name__ == "__main__":
                 cut_quadrants(img)
             case 27:
                 break
+                
         if img_modified1 is not None:
             cv2.imshow("image1", img_modified1) 
         if img_modified2 is not None:
             cv2.imshow("image2", img_modified2) 
+            
     cv2.destroyAllWindows()
