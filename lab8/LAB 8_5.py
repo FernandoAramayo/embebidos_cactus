@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-imagen = cv2.imread('download.jpeg')
+imagen = cv2.imread('watermelon.jpeg')
 
 if imagen is None:
     print("Error")
