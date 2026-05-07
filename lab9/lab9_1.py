@@ -23,7 +23,7 @@ while True:
     cv2.imshow('MOG2 Mask', mask_mog2_bin)
     cv2.imshow('KNN Mask', mask_knn_bin)
 
-    if cv2.waitKey(27) & 0xFF == ord('q'):
+    if cv2.waitKey(30) & 0xFF == ord('q'):
         break
 
 cap.release()
