@@ -4,7 +4,7 @@ import cv2
 mog2 = cv2.createBackgroundSubtractorMOG2(detectShadows=True)
 knn = cv2.createBackgroundSubtractorKNN(detectShadows=True)
 
-cap = cv2.VideoCapture('bouncing.mp4.mp4')
+cap = cv2.VideoCapture('recursos lab 9/bouncing.mp4.mp4')
 
 while True:
     ret, frame = cap.read()
