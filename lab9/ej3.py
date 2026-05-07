@@ -16,7 +16,7 @@ while cap.isOpened():
 
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
     h, s, v = cv.split(hsv)
-    _, sat_mask = cv.threshold(s, 50, 255, cv.THRESH_BINARY)
+    _, sat_mask = cv.threshold(s, 80, 255, cv.THRESH_BINARY)
 
     filtered_frame = cv.bitwise_and(fgmask, sat_mask)
 
