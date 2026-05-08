@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-imagen = cv2.imread('fotos/monedas_2.jpg')
+imagen = cv2.imread('recursos lab 9/monedas_2.jpg')
 if imagen is None:
     print("Error")
     exit()

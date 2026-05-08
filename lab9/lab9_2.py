@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-cap = cv2.VideoCapture('http://192.168.1.211:8080/video')
+cap = cv2.VideoCapture(0)
 fgbg = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=100, detectShadows=False)
 
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
