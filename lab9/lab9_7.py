@@ -5,7 +5,7 @@ import time
 
 # 1. Configuración de la comunicación UART
 try:
-    ser = serial.Serial('/dev/ttyS0', baudrate=9600, timeout=1)
+    ser = serial.Serial('/dev/ttyACM0', baudrate=9600, timeout=1)
     print("Comunicación UART establecida.")
 except Exception as e:
     print(f"Error al conectar UART: {e}")
