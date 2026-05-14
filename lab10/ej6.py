@@ -3,47 +3,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 
-# 1. Importar valores usando pandas
-try:
-    df = pd.read_csv('Clustering.csv')
-except FileNotFoundError:
-    print("Error: No se encontró 'Clustering.csv' en el directorio actual.")
-    exit()
+# 1. Cargar el dataset (usando tus nombres reales)
+df = pd.read_csv('Clustering.csv')
 
-# 2. Filtrar valores NaN 
-df = df.dropna(subset=['X', 'Y'])
+# 2. Seleccionar las columnas correctas (minúsculas según tu imagen)
+# Usamos .dropna() para eliminar cualquier fila con valores NaN
+new_dataset = df[['x', 'y']].dropna()
 
-# 3. Seleccionar X e Y
-new_dataset = df[['X', 'Y']]
-
-# 4. ELBOW METHOD para determinar el mejor K
+# 3. Método del Codo (Elbow Method)
 inercia = []
-K_range = range(1, 11)
+for k in range(1, 11):
+    kmeans = KMeans(n_clusters=k, n_init=10, random_state=42)
+    kmeans.fit(new_dataset)
+    inercia.append(kmeans.inertia_)
 
-for k in K_range:
-    model = KMeans(n_clusters=k, n_init=10, random_state=42)
-    model.fit(new_dataset)
-    inercia.append(model.inertia_)
-
-plt.figure(figsize=(10, 5))
-plt.plot(K_range, inercia, 'bx-')
-plt.xlabel('Número de Clusters (k)')
+plt.plot(range(1, 11), inercia, 'bx-')
+plt.title('Método del Codo')
+plt.xlabel('Número de clusters (k)')
 plt.ylabel('Inercia')
-plt.title('Método del Codo para el Dataset Clustering')
 plt.show()
 
-# 5. Comparar resultados 
-k_best = 3 
-model_best = KMeans(n_clusters=k_best, n_init=10)
-labels_best = model_best.fit_predict(new_dataset)
-
-plt.scatter(new_dataset['X'], new_dataset['Y'], c=labels_best, cmap='viridis')
-plt.title(f"Resultado con K={k_best} (Óptimo)")
-plt.show()
-
-# 6. Implementación de PCA
-pca = PCA(n_components=1) 
-pca_result = pca.fit_transform(new_dataset)
-print(f"Varianza explicada por el componente principal: {pca.explained_variance_ratio_[0]:.2%}")
+# 4. Aplicar PCA (Reducción de dimensiones)
+# PCA ayuda a resumir la información de X, Y y Z en componentes principales
+pca = PCA(n_components=2)
+pca_data = pca.fit_transform(new_dataset) 
+print(f"Varianza explicada por PCA: {pca.explained_variance_ratio_.sum():.2%}")
